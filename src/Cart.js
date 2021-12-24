@@ -23,10 +23,12 @@ import {
   deleteItemCart,
   createInvoice,
 } from "./Axios";
+import URL from "./components/Api";
 // import { Data } from "./Data";
 export default function Cart(props) {
   // const [Data1, setData1] = useState(Data);
   const navigate = useNavigate();
+  const [loading,setLoading] = useState(true)
   const [token, setToken] = useState("");
   const [Avatar, setAvatar] = useState("");
   const [sl, setsl] = useState([]);
@@ -41,7 +43,7 @@ export default function Cart(props) {
   const [muatc, setmuatc] = useState(false);
   const [xoaIndex, setxoaIndex] = useState("");
   const [xoaId, setxoaId] = useState("");
-
+  const [itemCart, setItemCart] = React.useState([]);
   const handleCloseXoa = () => setShowXoa(false);
   const handleShowXoa = () => setShowXoa(true);
 
@@ -185,20 +187,62 @@ export default function Cart(props) {
     settien(tong);
   }, [checkBox, Tong]);
 
-  const xoa_item = () => {
-    console.log(xoaIndex, xoaId);
-    // let xoa = cart;
-    // xoa.splice(xoaIndex, 1);
-    // setcart([...cart]);
+  const xoa_item = React.useCallback(() => {
+    console.log(xoaIndex, xoaId,'aaaaaaaa');
+    let xoa = cart;
+    xoa.splice(xoaIndex, 1);
+    setcart([...cart]);
     const body = {
       id: xoaId,
     };
+    console.log(body)
     deleteItemCart(body).then((res) => {
       console.log(res.data);
     });
     props.them();
     handleCloseXoa();
-  };
+  },[]);
+
+
+  const onDelete = React.useCallback(
+    async xoaId => {
+      
+      const controller = new AbortController();
+      const signal = controller.signal;
+      await fetch(URL.removeItem, {
+        signal: signal,
+        method: 'DELETE',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${
+            token
+          }`,
+        },
+        body: JSON.stringify({id: xoaId}),
+      })
+        .then(response => response.json())
+        .then(json => {
+          // setItemCart([...itemCart,json.cart.items])
+          setcart(json.cart.items);
+          // dispatch(removeFromCart(json.cart.items))
+          setLoading(false);
+        })
+        .catch(err => {
+          if (err.name === 'AbortError') {
+            console.log('Success Abort');
+          } else {
+            console.error(err);
+          }
+        });
+      return () => {
+        // cancel the request before component unmounts
+        controller.abort();
+      };
+    },
+    [xoaId],
+  );
+
 
   const updateSL = (id, sl) => {
     const body = {
@@ -331,6 +375,8 @@ export default function Cart(props) {
               setxoaId(item._id);
               setxoaIndex(index);
               handleShowXoa();
+              
+              onDelete(item._id)
             }}
           />
         </div>
